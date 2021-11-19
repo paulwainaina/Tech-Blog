@@ -1,0 +1,10 @@
+{
+    "blogs":[
+        {
+            "Title":"Hide Window",
+            "Description":"Hiding a window is a stealth technique that is used by adversary to execute commands at the background. This is useful to prevent suspicion by the computer user whenever a window pops up.",
+            "Image":"/assets/images/hideWindow.png",
+            "Url":"/hideWindow"
+        }
+    ]
+}

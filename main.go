@@ -3,25 +3,27 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 )
 
 var tpl *template.Template
-
+var blogs Blogs
+	
 func init() {
 	tpl = template.Must(template.ParseGlob("templates/*.gohtml"))
+	GetJsonData("./assets/database.json", &blogs)
 }
 
 type Page struct {
 	Title string
-	Body  []byte	
+	Body  []byte
+	Data  interface{}
 }
 
 func loadPage(title string) (*Page, error) {
 	filename := "templates/" + title + ".gohtml"
-	body, err := ioutil.ReadFile(filename)
+	body, err := ReadDataFromFile(filename)
 	if err != nil {
 		fmt.Println(err.Error())
 		return nil, err
@@ -45,7 +47,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	page, err := loadPage(title)
 	if err != nil {
 		page = &Page{Title: title}
-	}
+	}	
+	page.Data = blogs.Blogs
 	renderTemplate(w, title, page)
 }
 

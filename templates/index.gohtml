@@ -1,23 +1,21 @@
 {{template "header"}}
-
-<nav class="navbar navbar-dark bg-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="/">Tech Blog</a>             
-    </div>
-</nav>
-<br>
 <div class="container">
+    {{if .Data}}
     <div class="row row-cols-1 row-cols-md-3 g-4">
-        <div class="col">
-            <div class="card">
-                <img src="..." class="card-img-top" alt="...">
-                <div class="card-body">
-                <h5 class="card-title">Card title</h5>
-                <p class="card-text">This is a longer card with supporting text below as a natural lead-in to additional content. This content is a little bit longer.</p>
+        {{ range $blog := .Data}}
+            <div class="col">
+                <div class="card">
+                    <img src="{{$blog.Image}}" class="card-img-top" style="width:20;height:20">
+                    <div class="card-body">
+                    <h5 class="card-title">{{$blog.Title}}</h5>
+                    <p class="card-text">{{$blog.Description}}</p>
+                    <a href="{{$blog.Url}}" class="btn btn-link">ReadMore</a>
+                    </div>
                 </div>
             </div>
-        </div>
+        {{end}}
     </div>
+    {{end}}
 </div>
 
 {{template "footer"}}
