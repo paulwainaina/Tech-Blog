@@ -1,1 +1,95 @@
-Comming soon
+{{template "header"}}
+<div class="container" style="margin:auto">
+    <h1>Window Hiding</h1>
+    <h2>CreateProcess</h2>
+    <p>
+       Traditionally adversaries can start processes  hidden by passing the (STARTUPINFO/STARTUPINFOEX) pointer to the CreateProcess windows api. With the START_USESHOWWINDOW and SW_HIDE flags set as shown below.
+    </p>
+    <pre><code>
+        /*Wide character is prefered since the exe may be on a path with unicode characters*/
+        BOOL executeBinary(WCHAR* exePath) {	
+            STARTUPINFOW startup{};
+            ZeroMemory(&startup, sizeof(startup));  //You can also use memset
+            startup.cb = sizeof(STARTUPINFOW);      
+            startup.dwFlags = STARTF_USESHOWWINDOW;
+            startup.wShowWindow = SW_HIDE;
+            PROCESS_INFORMATION procinfo;
+            ZeroMemory(&procinfo, sizeof(procinfo));
+            return CreateProcessW(NULL, exePath, NULL, NULL, FALSE, 0, NULL, NULL, &startup, &procinfo);
+        }
+    </code></pre>
+    <h2>ShellExecute</h2>
+    <p> 
+        The use of (ShellExecute/ShellExecuteEx) windows api is still used with the flag SW_HIDE set.
+    </p>
+    <pre><code> 
+        void executeBinary(WCHAR* exePath) {
+	        ShellExecute(NULL, L"open",exePath,NULL,NULL,SW_HIDE);
+        }
+    </code></pre>
+    <b> NB => Make sure you pass a <u>non const string </u> parameter for it may cause memory access violation</b>
+    <br>
+    <h2>Getting a handle to the window</h2>    
+    <p>
+     Sometimes the above methods may not work especially when you are working with applications with QUI such as calc and iexplorer.The common approact is to use Enumwindows to get the handle to the window and use ShowWindow to hide the window using SW_HIDE flag. 
+    </P>
+    <pre> <code>
+        struct WinData {
+            HWND window;
+            DWORD pid;
+        };
+        HWND GetRealParent(HWND hWnd){
+            HWND hWndOwner;
+            if (NULL != (hWndOwner = GetWindow(hWnd, GW_OWNER)))
+                return hWndOwner;
+            return GetAncestor(hWnd, GA_PARENT);
+        }
+        HWND hideWindow(DWORD pid) {
+            WinData windowData{ NULL,pid };
+            EnumWindows([](HWND handle, LPARAM lParam)->BOOL {
+            WinData& x = *(WinData*)lParam;
+            DWORD pid{ 0 };
+            if (GetWindowThreadProcessId(handle, &pid) && x.pid == pid  && IsWindowVisible(handle) ) {
+                HWND parentWindow = GetRealParent(handle);
+                if (parentWindow) {
+                    x.window = parentWindow;
+                    return false;
+                }
+            }
+            return true;
+            }, (LPARAM)&windowData);
+            return (windowData.window) ? windowData.window:0;
+        }
+        ShowWindow(hideWindow(pid),SW_HIDE) //After getting the parent window it hides it
+    </code></pre>
+    <p> 
+        The above code tries to assert that the window belongs to the target process and hides it if it is visible. It will loop through all the windows in the system.
+        If a window associated with the pid is found it tries to get the parent window and hide it and exit.
+    </p>
+    <p>
+        This sounds all good but there is a "got you" moment. What if the first window to be captured is a tab of the process and there is no association with the parent.
+        This reminds me of Loosel-coupled IE https://docs.microsoft.com/en-us/archive/blogs/ie/ie8-and-loosely-coupled-ie-lcie. Does that mean it is impossible?.
+    </p>
+    <h2>Try and Error</h2>
+    <p> 
+        Being a developer the first thing that comes to mind is to use bruteforce by aggressively recursing through the system window.
+        When you pass a NULL to EnumChildWindows it acts the same as EnumWindows. So  we can initialize the function parameter to null on the start.
+        EnumChildWindows takes in a callback function so we can pass a lamda function as a parameter and when a window is found with the same pid as process we can traverse it looking for children windows.
+    </p>
+    <pre><code>
+        void hideWindow(DWORD pid,HWND parent=NULL) {
+	        EnumChildWindows(parent, [](HWND handle,LPARAM lParam)->BOOL {
+		    DWORD ownerPid{ 0 }, targetPid{(DWORD)lParam};
+            if (GetWindowThreadProcessId(handle,&ownerPid) && ownerPid==targetPid) {
+                ShowWindow(handle, SW_HIDE);
+                hideWindow(targetPid, handle);
+            }
+            return true;
+            },(LPARAM)pid);	
+        }
+    </code></pre>
+    <p>
+    The above method is very costly in terms of processing time. But the struggle continues to try and find better solutions.
+    </p>
+</div>
+{{template "footer"}}
